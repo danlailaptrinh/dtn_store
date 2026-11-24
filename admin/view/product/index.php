@@ -1,6 +1,6 @@
 <?php
 
-use App\Helpers\SecurityHelper;
+
 ?>
 
 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
@@ -8,18 +8,18 @@ use App\Helpers\SecurityHelper;
         <h1 class="h4 fw-bold mb-1">Quản lý sản phẩm điện thoại</h1>
         <p class="text-muted small mb-0">Tổng số: <strong><?= (int) $totalItems ?></strong> dòng điện thoại</p>
     </div>
-    <a href="<?= SecurityHelper::url('/admin/products/create') ?>" class="btn btn-dtd">
+    <a href="/admin/index.php?route=/admin/products/create" class="btn btn-dtd">
         <i class="bi bi-plus-circle me-1"></i>Thêm điện thoại mới
     </a>
 </div>
 
-<form action="<?= SecurityHelper::url('/admin/products') ?>" method="GET" class="card border-0 shadow-sm mb-4">
+<form action="/admin/index.php" method="GET" class="card border-0 shadow-sm mb-4">
     <input type="hidden" name="route" value="/admin/products">
     <div class="card-body">
         <div class="row g-3 align-items-end">
             <div class="col-md-5">
                 <label class="form-label small fw-semibold">Tìm kiếm theo tên điện thoại</label>
-                <input type="text" name="keyword" class="form-control" value="<?= SecurityHelper::e($keyword) ?>" placeholder="VD: iPhone, Galaxy S25...">
+                <input type="text" name="keyword" class="form-control" value="<?= viewE($keyword) ?>" placeholder="VD: iPhone, Galaxy S25...">
             </div>
             <div class="col-md-4">
                 <label class="form-label small fw-semibold">Lọc theo danh mục</label>
@@ -27,14 +27,14 @@ use App\Helpers\SecurityHelper;
                     <option value="0">Tất cả danh mục</option>
                     <?php foreach ($categories as $cat): ?>
                         <option value="<?= (int) $cat['id'] ?>" <?= (int) $categoryId === (int) $cat['id'] ? 'selected' : '' ?>>
-                            <?= SecurityHelper::e($cat['name']) ?>
+                            <?= viewE($cat['name']) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
             </div>
             <div class="col-md-3 d-flex gap-2">
                 <button type="submit" class="btn btn-dtd w-100"><i class="bi bi-search me-1"></i>Tìm kiếm</button>
-                <a href="<?= SecurityHelper::url('/admin/products') ?>" class="btn btn-outline-secondary">Đặt lại</a>
+                <a href="/admin/index.php?route=/admin/products" class="btn btn-outline-secondary">Đặt lại</a>
             </div>
         </div>
     </div>
@@ -62,31 +62,54 @@ use App\Helpers\SecurityHelper;
                             <td>
                                 <div class="d-flex align-items-center gap-2">
                                     <img
-                                        src="<?= SecurityHelper::productImage($p['primary_image']) ?>"
-                                        alt="<?= SecurityHelper::e($p['name']) ?>"
+
+                                        src="<?php
+                                                $imagePath = ltrim((string)($p['primary_image'] ?? ''), '/');
+
+                                                $imageUrl = '/assets/images/no-image.svg';
+
+                                                if (
+                                                    $imagePath !== '' &&
+                                                    !str_contains($imagePath, '..') &&
+                                                    preg_match(
+                                                        '~^(assets/|uploads/)[a-zA-Z0-9/_(). -]+\.(jpg|jpeg|png|webp|gif)$~i',
+                                                        $imagePath
+                                                    )
+                                                ) {
+                                                    $localFile = dirname(__DIR__, 3) . '/' . $imagePath;
+
+                                                    if (is_file($localFile)) {
+                                                        $imageUrl = '/' . $imagePath;
+                                                    }
+                                                }
+
+                                                echo htmlspecialchars($imageUrl, ENT_QUOTES, 'UTF-8');
+                                                ?>"
+
+                                        alt="<?= viewE($p['name']) ?>"
                                         style="width: 48px; height: 48px; object-fit: contain;"
                                         class="border rounded bg-white p-1">
                                     <div>
-                                        <div class="fw-semibold"><?= SecurityHelper::e($p['name']) ?></div>
+                                        <div class="fw-semibold"><?= viewE($p['name']) ?></div>
                                         <?php if ((int) $p['is_featured'] === 1): ?>
                                             <span class="ui-style-17 badge bg-warning text-dark">Nổi bật</span>
                                         <?php endif; ?>
                                     </div>
                                 </div>
                             </td>
-                            <td><span class="badge bg-light text-dark border"><?= SecurityHelper::e($p['category_name']) ?></span></td>
+                            <td><span class="badge bg-light text-dark border"><?= viewE($p['category_name']) ?></span></td>
                             <td class="small">
                                 <?php if ($p['min_price'] !== null): ?>
-                                    <span class="fw-bold text-danger"><?= SecurityHelper::formatPrice($p['min_price']) ?></span>
+                                    <span class="fw-bold text-danger"><?= viewPrice($p['min_price']) ?></span>
                                     <?php if ((float) $p['max_price'] > (float) $p['min_price']): ?>
-                                        <span class="text-muted"> - <?= SecurityHelper::formatPrice($p['max_price']) ?></span>
+                                        <span class="text-muted"> - <?= viewPrice($p['max_price']) ?></span>
                                     <?php endif; ?>
                                 <?php else: ?>
                                     <span class="text-warning fw-semibold">Chưa có biến thể</span>
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <a href="<?= SecurityHelper::url('/admin/products/' . (int) $p['id'] . '/variants') ?>" class="btn btn-sm btn-outline-dark">
+                                <a href="<?= viewUrl('/admin/products/' . (int) $p['id'] . '/variants') ?>" class="btn btn-sm btn-outline-dark">
                                     <i class="bi bi-cpu me-1"></i><?= (int) $p['variant_count'] ?> biến thể
                                 </a>
                             </td>
@@ -96,19 +119,13 @@ use App\Helpers\SecurityHelper;
                                     : '<span class="badge bg-secondary">Ẩn</span>' ?>
                             </td>
                             <td class="text-end text-nowrap">
-                                <a href="<?= SecurityHelper::url('/admin/products/' . (int) $p['id'] . '/images') ?>" class="btn btn-sm btn-outline-info" title="Quản lý ảnh">
+                                <a href="<?= viewUrl('/admin/products/' . (int) $p['id'] . '/images') ?>" class="btn btn-sm btn-outline-info" title="Quản lý ảnh">
                                     <i class="bi bi-images"></i> Ảnh
                                 </a>
-                                <a href="<?= SecurityHelper::url('/admin/products/edit/' . (int) $p['id']) ?>" class="btn btn-sm btn-outline-primary" title="Sửa">
+                                <a href="<?= viewUrl('/admin/products/edit/' . (int) $p['id']) ?>" class="btn btn-sm btn-outline-primary" title="Sửa">
                                     <i class="bi bi-pencil"></i> Sửa
                                 </a>
-                                <form action="<?= SecurityHelper::url('/admin/products/delete') ?>" method="POST" class="d-inline">
-                                    <?= SecurityHelper::csrfField() ?>
-                                    <input type="hidden" name="product_id" value="<?= (int) $p['id'] ?>">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Xác nhận xóa điện thoại này cùng toàn bộ biến thể và hình ảnh của nó?');">
-                                        <i class="bi bi-trash"></i> Xóa
-                                    </button>
-                                </form>
+                                <button type="button" class="btn btn-sm btn-outline-danger" disabled title="Chưa triển khai Xóa sản phẩm"><i class="bi bi-trash"></i> Xóa</button>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -128,7 +145,7 @@ use App\Helpers\SecurityHelper;
             <?php for ($i = 1; $i <= $totalPages; $i++): ?>
                 <?php
 
-                $url = SecurityHelper::url('/admin/products')
+                $url = '/admin/index.php?route=/admin/products'
                     . '&'
                     . http_build_query([
                         'keyword' => $keyword,
@@ -138,7 +155,7 @@ use App\Helpers\SecurityHelper;
 
                 ?>
                 <li class="page-item <?= $i === $currentPage ? 'active' : '' ?>">
-                    <a class="page-link <?= $i === $currentPage ? 'bg-danger border-danger' : 'text-danger' ?>" href="<?= SecurityHelper::e($url) ?>"><?= $i ?></a>
+                    <a class="page-link <?= $i === $currentPage ? 'bg-danger border-danger' : 'text-danger' ?>" href="<?= viewE($url) ?>"><?= $i ?></a>
                 </li>
             <?php endfor; ?>
         </ul>

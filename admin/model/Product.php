@@ -52,7 +52,7 @@ class Product
         p.category_id,
         c.category_name,
         p.image_list,
-p.is_featured,
+0 AS is_featured,
 CASE
     WHEN p.status = 'dang_ban'
     THEN 1 ELSE 0
@@ -99,5 +99,104 @@ END AS status,
         $stmt = $this->pdo->query($sql);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+
+    public function createWithVariant($product, $variant)
+    {
+        try {
+            // Bắt đầu transaction
+            $this->pdo->beginTransaction();
+
+            // 1. Thêm sản phẩm
+            $sql = "INSERT INTO products (
+                    category_id,
+                    product_name,
+                    brand,
+                    description,
+                    image_list,
+                    status,
+                    list_price,
+                    old_price,
+                    screen,
+                    chip,
+                    promotion_label
+                ) VALUES (
+                    :category_id,
+                    :product_name,
+                    :brand,
+                    :description,
+                    :image_list,
+                    :status,
+                    :list_price,
+                    :old_price,
+                    :screen,
+                    :chip,
+                    :promotion_label
+                )";
+
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($product);
+
+            // Lấy ID sản phẩm vừa thêm
+            $productId = (int) $this->pdo->lastInsertId();
+
+            // 2. Thêm biến thể đầu tiên
+            $sqlVariant = "INSERT INTO product_variants (
+                            product_id,
+                            sku,
+                            ram,
+                            storage,
+                            color,
+                            sale_price,
+                            stock_quantity,
+                            is_on_sale
+                       ) VALUES (
+                            :product_id,
+                            :sku,
+                            :ram,
+                            :storage,
+                            :color,
+                            :sale_price,
+                            :stock_quantity,
+                            :is_on_sale
+                       )";
+
+            $stmtVariant = $this->pdo->prepare($sqlVariant);
+
+            $stmtVariant->execute([
+                'product_id' => $productId,
+                'sku' => $variant['sku'],
+                'ram' => $variant['ram'],
+                'storage' => $variant['storage'],
+                'color' => $variant['color'],
+                'sale_price' => $variant['sale_price'],
+                'stock_quantity' => $variant['stock_quantity'],
+                'is_on_sale' => 1
+            ]);
+
+            // Lưu cả sản phẩm và biến thể
+            $this->pdo->commit();
+
+            return $productId;
+        } catch (Throwable $e) {
+
+            // Nếu xảy ra lỗi, hủy các thay đổi
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+
+            throw $e;
+        }
+    }
+
+    public function update($id, array $data): void {
+        $sql = "UPDATE products SET product_name=?, category_id=?, brand=?, description=?, screen=?, chip=?, list_price=?, old_price=?, promotion_label=?, status=?, image_list=? WHERE product_id=?";
+        $s=$this->pdo->prepare($sql);
+        $s->execute([$data['product_name'],$data['category_id'],$data['brand'],$data['description'],$data['screen'],$data['chip'],$data['list_price'],$data['old_price'],$data['promotion_label'],$data['status'],$data['image_list'],$id]);
+    }
+    public function getVariants($productId): array {
+        $s=$this->pdo->prepare('SELECT * FROM product_variants WHERE product_id=? ORDER BY variant_id DESC');
+        $s->execute([$productId]); return $s->fetchAll(PDO::FETCH_ASSOC);
     }
 }
